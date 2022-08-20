@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ffmpeg</title>
+    <style>
+      #images img {
+        max-width: 380px;
+      }
+    </style>
+</head>
+<body>
+    <input id="uploader" type="file" accept="video/*">
+    <p>status: <span id="status">idle...</span></p>
+    <section id="images">
+
+    </section>
+    <script src="./ffmpeg.min.js"></script>
+    <script>
+      /**@type HTMLSpanElement */
+       const status = document.getElementById("status");
+       const imageContainer = document.getElementById("images");
+       const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg(
+    {   //log: true, 
+        mainName: 'main',
+        corePath: "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js"  
+    });
+    
+    const transcode = async ({ target: { files } }) => {
+      const { name } = files[0];
+      status.textContent = "ffmpeg loading...";
+      await ffmpeg.load();
+      status.textContent = "video processing...";
+      ffmpeg.FS('writeFile', name, await fetchFile(files[0]));
+      //                  ffmpeg CLI args
+      await ffmpeg.run(...['-i', name, "-vf", "fps=1", "thumb%04d.jpg"]);
+      const ls = ffmpeg.FS('readdir', '/');
+      const images = ls.filter(item => item.endsWith(".jpg"));
+      // console.log(images);
+      let URLs = [];
+      images.forEach(image => {
+        let file = ffmpeg.FS('readFile', image);
+        URLs.push(URL.createObjectURL(new Blob([file.buffer], { type: 'image/jpeg' })));
+      });
+      status.textContent = "Images loading...";
+      URLs.forEach(image => {
+        let img = new Image();
+        img.src = image;
+        imageContainer.appendChild(img);
+      })
+      status.textContent = "Done.";
+    }
+    document
+      .getElementById('uploader').addEventListener('change', transcode);
+    </script>
+</body>
+</html>
